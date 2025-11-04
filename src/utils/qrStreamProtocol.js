@@ -20,19 +20,32 @@ export class QRStreamProtocol {
   parseQRCode(qrString) {
     try {
       const chunk = JSON.parse(qrString);
-      
-      // Validate chunk structure
-      if (!chunk.id || typeof chunk.seq !== 'number' || 
-          typeof chunk.total !== 'number' || !chunk.data) {
+
+      // Support alternative field names and numeric strings from mixed protocol sources
+      const streamId = chunk.id ?? chunk.streamId ?? chunk.stream_id ?? chunk.streamID ?? null;
+      const sequenceRaw = chunk.seq ?? chunk.sequence ?? chunk.index ?? chunk.chunkIndex ?? chunk.chunk ?? null;
+      const totalRaw = chunk.total ?? chunk.totalChunks ?? chunk.total_chunks ?? chunk.chunkCount ?? null;
+      const data = chunk.data ?? chunk.payload ?? chunk.body ?? chunk.content ?? null;
+      const checksum = chunk.checksum ?? chunk.crc ?? null;
+
+      const sequence = typeof sequenceRaw === 'number' ? sequenceRaw : (sequenceRaw != null ? Number(sequenceRaw) : NaN);
+      const total = typeof totalRaw === 'number' ? totalRaw : (totalRaw != null ? Number(totalRaw) : NaN);
+      const streamIdStr = streamId != null ? String(streamId).trim() : '';
+
+      if (!streamIdStr || !Number.isFinite(sequence) || !Number.isFinite(total) || typeof data !== 'string' || !data.length) {
+        return { error: 'Invalid chunk format' };
+      }
+
+      if (!Number.isInteger(sequence) || sequence < 0 || !Number.isInteger(total) || total <= 0) {
         return { error: 'Invalid chunk format' };
       }
 
       return {
-        streamId: chunk.id,
-        sequence: chunk.seq,
-        total: chunk.total,
-        data: chunk.data,
-        checksum: chunk.checksum || null
+        streamId: streamIdStr,
+        sequence: sequence,
+        total: total,
+        data: data,
+        checksum: checksum || null
       };
     } catch (error) {
       return { error: 'Failed to parse QR code: ' + error.message };
