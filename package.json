@@ -10,7 +10,7 @@
     "tauri": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:android": "tauri android build --ci --debug",
-    "tauri:android:release": "tauri android build --ci --release"
+    "tauri:android:release": "tauri android build --ci"
   },
   "dependencies": {
   "@zxing/library": "^0.18.6",
