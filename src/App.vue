@@ -225,13 +225,10 @@ onUnmounted(() => {
     </div>
 
     <!-- Bottom overlay box -->
-    <div class="bottom-overlay">
+    <div v-if="decodedData" class="bottom-overlay">
       <div class="overlay-content">
-        <div v-if="decodedData" class="decoded-text">
+        <div class="decoded-text">
           {{ decodedData }}
-        </div>
-        <div v-else class="decoded-text empty">
-          <!-- Empty state, ready for decoded data -->
         </div>
       </div>
     </div>
@@ -289,24 +286,29 @@ onUnmounted(() => {
   max-height: 60vh;
   overflow-y: auto;
   overflow-x: hidden;
+  /* 동적 높이: 내용에 따라 자동 조정, 최대 60vh */
+  display: flex;
+  flex-direction: column;
 }
 
 .overlay-content {
   padding: 20px;
   color: #fff;
+  /* 내용이 최소 높이를 가지도록 */
+  min-height: fit-content;
 }
 
 .decoded-text {
+  /* 공백과 줄바꿈 보존 */
   white-space: pre-wrap;
+  /* 긴 단어도 줄바꿈되도록 */
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
   font-family: 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.6;
   color: #fff;
-}
-
-.decoded-text.empty {
-  min-height: 20px;
 }
 
 /* Scrollbar styling for overlay */
