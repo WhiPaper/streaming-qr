@@ -7,22 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependency directories
-node_modules/
-
-# Build output
-/dist/
-/dist-ssr/
-.vite/
-
-# Tauri / Rust artifacts
-/src-tauri/target/
-/src-tauri/gen/
-
-# Environment files
-.env*
+node_modules
+dist
+dist-ssr
 *.local
 
-# OS-specific files
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
