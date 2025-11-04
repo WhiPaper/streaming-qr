@@ -4,29 +4,16 @@ import { BrowserMultiFormatReader } from "@zxing/library";
 import { QRStreamProtocol } from "./utils/qrStreamProtocol.js";
 
 const protocol = new QRStreamProtocol();
-const scanner = ref(null);
 const scanning = ref(false);
 const videoRef = ref(null);
 const decodedData = ref("");
 const currentStream = ref(null);
 const progress = ref(null);
 const error = ref("");
-const logs = ref([]);
-const codeReader = ref(null);
+const overlayMessage = ref("");
 
 let streamId = null;
 let codeReaderInstance = null;
-
-function addLog(message, type = "info") {
-  logs.value.unshift({
-    message,
-    type,
-    timestamp: new Date().toLocaleTimeString()
-  });
-  if (logs.value.length > 50) {
-    logs.value.pop();
-  }
-}
 
 async function startScanning() {
   try {
@@ -49,7 +36,7 @@ async function startScanning() {
       videoRef.value.srcObject = stream;
       await videoRef.value.play();
       scanning.value = true;
-      addLog("Camera started", "success");
+      overlayMessage.value = "Camera ready. Point to QR stream.";
 
       // Initialize ZXing reader
       codeReaderInstance = new BrowserMultiFormatReader();
@@ -59,7 +46,7 @@ async function startScanning() {
     }
   } catch (err) {
     error.value = "Failed to access camera: " + err.message;
-    addLog("Camera error: " + err.message, "error");
+    overlayMessage.value = "Camera error: " + err.message;
     scanning.value = false;
   }
 }
@@ -81,7 +68,7 @@ function scanLoop() {
     })
     .catch((err) => {
       if (scanning.value) {
-        addLog("Scan error: " + err.message, "error");
+        overlayMessage.value = "Scan error: " + err.message;
       }
     });
 }
@@ -91,12 +78,12 @@ function handleQRCode(qrText) {
     const result = protocol.processChunk(qrText);
     
     if (result.error) {
-      addLog(`Error: ${result.error}`, "error");
+      overlayMessage.value = `Error: ${result.error}`;
       return;
     }
 
     if (result.status === "duplicate") {
-      addLog(`Duplicate chunk ${result.sequence} (${result.progress.received}/${result.progress.total})`, "warning");
+      overlayMessage.value = `Duplicate chunk ${result.sequence + 1}/${result.progress.total}`;
       return;
     }
 
@@ -107,19 +94,19 @@ function handleQRCode(qrText) {
         id: streamId,
         total: protocol.getProgress(streamId).total
       };
-      addLog(`New stream detected: ${streamId} (${result.progress.total} chunks)`, "info");
+      overlayMessage.value = `Stream ${streamId} detected (${result.progress.total} chunks).`;
     }
 
     progress.value = result.progress;
-    addLog(`Chunk ${result.sequence + 1}/${result.progress.total} received`, "success");
+    overlayMessage.value = `Chunk ${result.sequence + 1}/${result.progress.total} received (${result.progress.percentage}% complete).`;
 
     // If complete, reconstruct the data
     if (result.isComplete) {
-      addLog("Stream complete! Reconstructing data...", "success");
+      overlayMessage.value = "All chunks received. Reconstructing...";
       reconstructStream(result.streamId);
     }
   } catch (err) {
-    addLog("Error processing QR code: " + err.message, "error");
+    overlayMessage.value = "Error processing QR code: " + err.message;
   }
 }
 
@@ -128,12 +115,12 @@ function reconstructStream(streamId) {
   
   if (result.error) {
     error.value = result.error;
-    addLog(`Reconstruction error: ${result.error}`, "error");
+    overlayMessage.value = `Reconstruction error: ${result.error}`;
     return;
   }
 
   decodedData.value = result.data;
-  addLog(`Data reconstructed: ${result.size} bytes from ${result.chunks} chunks in ${result.duration}ms`, "success");
+  overlayMessage.value = `Data reconstructed: ${result.size} bytes via ${result.chunks} chunks in ${result.duration}ms.`;
   
   // Optionally stop scanning after successful reconstruction
   // stopScanning();
@@ -153,7 +140,7 @@ function stopScanning() {
     videoRef.value.srcObject = null;
   }
 
-  addLog("Scanning stopped", "info");
+  overlayMessage.value = "Scanning stopped.";
 }
 
 function clearData() {
@@ -163,12 +150,13 @@ function clearData() {
   error.value = "";
   protocol.clearAll();
   streamId = null;
-  addLog("Data cleared", "info");
+  overlayMessage.value = "Data cleared.";
 }
 
 function downloadData() {
   if (!decodedData.value) {
     error.value = "No data to download";
+    overlayMessage.value = "No data available for download.";
     return;
   }
 
@@ -181,19 +169,21 @@ function downloadData() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  addLog("Data downloaded", "success");
+  overlayMessage.value = "Data downloaded.";
 }
 
 function copyToClipboard() {
   if (!decodedData.value) {
     error.value = "No data to copy";
+    overlayMessage.value = "No data available to copy.";
     return;
   }
 
   navigator.clipboard.writeText(decodedData.value).then(() => {
-    addLog("Data copied to clipboard", "success");
+    overlayMessage.value = "Data copied to clipboard.";
   }).catch(err => {
     error.value = "Failed to copy: " + err.message;
+    overlayMessage.value = "Failed to copy: " + err.message;
   });
 }
 
@@ -225,9 +215,12 @@ onUnmounted(() => {
     </div>
 
     <!-- Bottom overlay box -->
-    <div v-if="decodedData" class="bottom-overlay">
+    <div v-if="overlayMessage || decodedData" class="bottom-overlay">
       <div class="overlay-content">
-        <div class="decoded-text">
+        <p v-if="overlayMessage" class="status-text">
+          {{ overlayMessage }}
+        </p>
+        <div v-if="decodedData" class="decoded-text">
           {{ decodedData }}
         </div>
       </div>
@@ -296,6 +289,12 @@ onUnmounted(() => {
   color: #fff;
   /* 내용이 최소 높이를 가지도록 */
   min-height: fit-content;
+}
+
+.status-text {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .decoded-text {
