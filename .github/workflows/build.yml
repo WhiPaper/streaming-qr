@@ -51,12 +51,16 @@ jobs:
       - name: Initialize Android project
         run: npx tauri android init --ci
 
-      - name: Decode release keystore
+      - name: Setup Android signing
         run: |
+          cd src-tauri/gen/android
           ANDROID_KEYSTORE_BASE64="${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             mkdir -p "$(dirname "$KEYSTORE_FILE")"
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+            echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
+            echo "password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> keystore.properties
+            base64 -d <<< "$ANDROID_KEYSTORE_BASE64" > "$KEYSTORE_FILE"
+            echo "storeFile=$KEYSTORE_FILE" >> keystore.properties
           fi
 
       - name: Build Android APK (release)

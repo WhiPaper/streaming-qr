@@ -46,6 +46,31 @@ npm run tauri dev
 npm run tauri build
 ```
 
+### Android Build Configuration
+
+#### Keystore Configuration
+
+For Android release builds, configure the keystore using environment variables:
+
+```bash
+# Required environment variables for signing
+export TAURI_ANDROID_KEYSTORE_PATH=/path/to/your/keystore.jks
+export TAURI_ANDROID_KEYSTORE_PASSWORD=your_keystore_password
+export TAURI_ANDROID_KEY_ALIAS=your_key_alias
+export TAURI_ANDROID_KEY_PASSWORD=your_key_password
+
+# Then build
+npm run tauri android build
+```
+
+#### Permissions
+
+The app requires the following Android permissions (configured in `AndroidManifest.xml`):
+- `INTERNET` - For network access
+- `CAMERA` - For QR code scanning
+
+Note: The Android project is generated in `src-tauri/gen/android/`. If you regenerate the Android project, you may need to re-add custom permissions to the `AndroidManifest.xml` file.
+
 ## Usage
 
 1. Click "Start Scanning" to activate the camera
