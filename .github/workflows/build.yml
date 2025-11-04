@@ -60,7 +60,7 @@ jobs:
           fi
 
       - name: Build Android APK (release)
-        run: npm run tauri:android:release
+        run: npm run tauri android build
         env:
           CI: true
           TAURI_ANDROID_KEYSTORE_PATH: ${{ env.KEYSTORE_FILE }}
