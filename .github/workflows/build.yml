@@ -39,8 +39,8 @@ jobs:
           packages: |
             platform-tools
             platforms;android-34
-            build-tools;34.0.0
-            ndk;25.2.9519653
+            build-tools
+            ndk
 
       - name: Install Rust Android targets
         run: |
