@@ -35,7 +35,6 @@ watch(selectedFormat, () => {
 
   if (codeReaderInstance) {
     codeReaderInstance.reset();
-    codeReaderInstance.setHints(decodingHints);
     if (scanning.value) {
       scanLoop();
     }
@@ -63,9 +62,8 @@ async function startScanning() {
       scanning.value = true;
       overlayMessage.value = `Camera ready. Point to ${selectedFormatLabel.value} stream.`;
 
-      // Initialize ZXing reader
-      codeReaderInstance = new BrowserMultiFormatReader();
-      codeReaderInstance.setHints(decodingHints);
+  // Initialize ZXing reader
+  codeReaderInstance = new BrowserMultiFormatReader(decodingHints);
 
       // Start continuous scanning
       scanLoop();
@@ -141,10 +139,6 @@ function applyFormatHints() {
   decodingHints.clear();
   decodingHints.set(DecodeHintType.POSSIBLE_FORMATS, [option.barcodeFormat]);
   decodingHints.set(DecodeHintType.TRY_HARDER, true);
-
-  if (codeReaderInstance && typeof codeReaderInstance.setHints === "function") {
-    codeReaderInstance.setHints(decodingHints);
-  }
 }
 
 function resetStreamState() {
