@@ -1,6 +1,6 @@
 /**
  * QR Stream Protocol
- * 
+ *
  * Each QR code contains a JSON object with:
  * - id: unique stream identifier
  * - seq: sequence number (0-based)
@@ -154,29 +154,30 @@ export class QRStreamProtocol {
       };
     }
 
-    // Reconstruct by concatenating chunks in order
-    let reconstructed = '';
+    // Reconstruct by decoding each chunk *individually* and then concatenating.
+    let decodedData = '';
     for (let i = 0; i < stream.total; i++) {
-      const chunkData = stream.chunks.get(i);
+      const chunkData = stream.chunks.get(i); // This is Base64 data
       if (!chunkData) {
         return { error: `Missing chunk ${i}` };
       }
-      reconstructed += chunkData;
+      
+      try {
+        // Decode each chunk one by one
+        decodedData += atob(chunkData); 
+      } catch (error) {
+        return { error: `Failed to decode chunk ${i}: ${error.message}` };
+      }
     }
 
-    // Decode base64
-    try {
-      const decoded = atob(reconstructed);
-      return {
-        streamId,
-        data: decoded,
-        size: decoded.length,
-        chunks: stream.total,
-        duration: Date.now() - stream.startTime
-      };
-    } catch (error) {
-      return { error: 'Failed to decode data: ' + error.message };
-    }
+    // Now 'decodedData' holds the complete, reconstructed text.
+    return {
+      streamId,
+      data: decodedData,
+      size: decodedData.length,
+      chunks: stream.total,
+      duration: Date.now() - stream.startTime
+    };
   }
 
   /**
@@ -236,4 +237,3 @@ export function splitDataIntoChunks(data, maxChunkSize = 2000) {
 
   return chunks;
 }
-
