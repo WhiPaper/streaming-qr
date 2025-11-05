@@ -28,8 +28,10 @@ async function startScanning() {
       video: {
         facingMode: "environment", // Use back camera on mobile
         width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
+        height: { ideal: 720 },
+        frameRate: { ideal: 60, min: 30 }
+      },
+      audio: false
     });
 
     if (videoRef.value) {
