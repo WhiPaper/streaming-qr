@@ -28,6 +28,10 @@ let codeReaderInstance = null;
 
 applyFormatHints();
 
+function createCodeReader() {
+  return new BrowserMultiFormatReader(decodingHints);
+}
+
 watch(selectedFormat, () => {
   applyFormatHints();
   resetStreamState();
@@ -35,9 +39,12 @@ watch(selectedFormat, () => {
 
   if (codeReaderInstance) {
     codeReaderInstance.reset();
-    if (scanning.value) {
-      scanLoop();
-    }
+  }
+
+  codeReaderInstance = createCodeReader();
+
+  if (scanning.value) {
+    scanLoop();
   }
 });
 
@@ -62,8 +69,8 @@ async function startScanning() {
       scanning.value = true;
       overlayMessage.value = `Camera ready. Point to ${selectedFormatLabel.value} stream.`;
 
-  // Initialize ZXing reader
-  codeReaderInstance = new BrowserMultiFormatReader(decodingHints);
+      // Initialize ZXing reader for the currently selected format
+      codeReaderInstance = createCodeReader();
 
       // Start continuous scanning
       scanLoop();
@@ -89,7 +96,7 @@ function scanLoop() {
         // Only log other errors
         console.debug("Scan error:", err);
       }
-    }, decodingHints)
+    })
     .catch((err) => {
       if (scanning.value) {
         overlayMessage.value = "Scan error: " + err.message;
@@ -171,8 +178,9 @@ function stopScanning() {
   
   if (codeReaderInstance) {
     codeReaderInstance.reset();
-    codeReaderInstance = null;
   }
+
+  codeReaderInstance = null;
 
   if (videoRef.value && videoRef.value.srcObject) {
     const tracks = videoRef.value.srcObject.getTracks();
