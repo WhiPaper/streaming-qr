@@ -1,9 +1,13 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import { BrowserMultiFormatReader } from "@zxing/library";
-import { QRStreamProtocol } from "./utils/qrStreamProtocol.js";
+import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
+import { AztecStreamProtocol } from "./utils/aztecStreamProtocol.js";
 
-const protocol = new QRStreamProtocol();
+const decodingHints = new Map();
+decodingHints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.AZTEC]);
+decodingHints.set(DecodeHintType.TRY_HARDER, true);
+
+const protocol = new AztecStreamProtocol();
 const scanning = ref(false);
 const videoRef = ref(null);
 const decodedData = ref("");
@@ -38,10 +42,10 @@ async function startScanning() {
       videoRef.value.srcObject = stream;
       await videoRef.value.play();
       scanning.value = true;
-      overlayMessage.value = "Camera ready. Point to QR stream.";
+  overlayMessage.value = "Camera ready. Point to Aztec stream.";
 
       // Initialize ZXing reader
-      codeReaderInstance = new BrowserMultiFormatReader();
+  codeReaderInstance = new BrowserMultiFormatReader(decodingHints);
       
       // Start continuous scanning
       scanLoop();
@@ -61,13 +65,13 @@ function scanLoop() {
   codeReaderInstance
     .decodeFromVideoDevice(null, videoRef.value, (result, err) => {
       if (result) {
-        handleQRCode(result.getText());
+        handleAztecCode(result.getText());
       } else if (err && err.name !== "NotFoundException") {
-        // NotFoundException is normal when no QR code is in view
+        // NotFoundException is normal when no Aztec code is in view
         // Only log other errors
         console.debug("Scan error:", err);
       }
-    })
+    }, decodingHints)
     .catch((err) => {
       if (scanning.value) {
         overlayMessage.value = "Scan error: " + err.message;
@@ -75,9 +79,9 @@ function scanLoop() {
     });
 }
 
-function handleQRCode(qrText) {
+function handleAztecCode(codeText) {
   try {
-    const result = protocol.processChunk(qrText);
+    const result = protocol.processChunk(codeText);
     
     if (result.error) {
       overlayMessage.value = `Error: ${result.error}`;
@@ -108,7 +112,7 @@ function handleQRCode(qrText) {
       reconstructStream(result.streamId);
     }
   } catch (err) {
-    overlayMessage.value = "Error processing QR code: " + err.message;
+    overlayMessage.value = "Error processing Aztec code: " + err.message;
   }
 }
 
