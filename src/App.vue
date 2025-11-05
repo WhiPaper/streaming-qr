@@ -116,12 +116,11 @@ function handleSymbol(codeText) {
     // Update current stream info
     if (!streamId || streamId !== result.streamId) {
       streamId = result.streamId;
-      const streamProgress = protocol.getProgress(streamId);
       currentStream.value = {
         id: streamId,
-        total: streamProgress.total
+        total: result.progress.total
       };
-      overlayMessage.value = `Stream ${streamId} detected via ${selectedFormatLabel.value} (${streamProgress.total} chunks).`;
+      overlayMessage.value = `Stream ${streamId} detected via ${selectedFormatLabel.value} (${result.progress.total} chunks).`;
     }
 
     progress.value = result.progress;
@@ -133,8 +132,28 @@ function handleSymbol(codeText) {
       reconstructStream(result.streamId);
     }
   } catch (err) {
-    overlayMessage.value = `Error processing ${selectedFormatLabel.value}: " + err.message;
+    overlayMessage.value = `Error processing ${selectedFormatLabel.value}: ${err.message}`;
   }
+}
+
+function applyFormatHints() {
+  const option = selectedOption.value;
+  decodingHints.clear();
+  decodingHints.set(DecodeHintType.POSSIBLE_FORMATS, [option.barcodeFormat]);
+  decodingHints.set(DecodeHintType.TRY_HARDER, true);
+
+  if (codeReaderInstance && typeof codeReaderInstance.setHints === "function") {
+    codeReaderInstance.setHints(decodingHints);
+  }
+}
+
+function resetStreamState() {
+  protocol.clearAll();
+  streamId = null;
+  currentStream.value = null;
+  progress.value = null;
+  decodedData.value = "";
+  error.value = "";
 }
 
 function reconstructStream(streamId) {
@@ -171,12 +190,7 @@ function stopScanning() {
 }
 
 function clearData() {
-  decodedData.value = "";
-  currentStream.value = null;
-  progress.value = null;
-  error.value = "";
-  protocol.clearAll();
-  streamId = null;
+  resetStreamState();
   overlayMessage.value = "Data cleared.";
 }
 
@@ -241,6 +255,17 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <div class="top-controls">
+      <label class="format-label">
+        <span>Code type</span>
+        <select v-model="selectedFormat" class="format-select">
+          <option v-for="option in formatOptions" :key="option.id" :value="option.id">
+            {{ option.label }}
+          </option>
+        </select>
+      </label>
+    </div>
+
     <!-- Bottom overlay box -->
     <div v-if="overlayMessage || decodedData" class="bottom-overlay">
       <div class="overlay-content">
@@ -293,6 +318,48 @@ onUnmounted(() => {
   height: 100%;
   color: #fff;
   gap: 20px;
+}
+
+.top-controls {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(0, 0, 0, 0.45);
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+.format-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.format-select {
+  appearance: none;
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  padding: 6px 28px 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.format-select:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 1px;
+}
+
+.format-select option {
+  color: #000;
 }
 
 /* Bottom overlay box */
