@@ -76,4 +76,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: streaming-qr-android-release
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
