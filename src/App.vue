@@ -1,13 +1,20 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
-import { AztecStreamProtocol } from "./utils/aztecStreamProtocol.js";
+import { CodeStreamProtocol } from "./utils/codeStreamProtocol.js";
+
+const formatOptions = [
+  { id: "AZTEC", label: "Aztec", barcodeFormat: BarcodeFormat.AZTEC },
+  { id: "QR_CODE", label: "QR Code", barcodeFormat: BarcodeFormat.QR_CODE },
+  { id: "DATA_MATRIX", label: "Data Matrix", barcodeFormat: BarcodeFormat.DATA_MATRIX }
+];
+
+const selectedFormat = ref(formatOptions[0].id);
+const selectedOption = computed(() => formatOptions.find(option => option.id === selectedFormat.value) ?? formatOptions[0]);
+const selectedFormatLabel = computed(() => selectedOption.value.label);
 
 const decodingHints = new Map();
-decodingHints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.AZTEC]);
-decodingHints.set(DecodeHintType.TRY_HARDER, true);
-
-const protocol = new AztecStreamProtocol();
+const protocol = new CodeStreamProtocol();
 const scanning = ref(false);
 const videoRef = ref(null);
 const decodedData = ref("");
@@ -19,13 +26,25 @@ const overlayMessage = ref("");
 let streamId = null;
 let codeReaderInstance = null;
 
+applyFormatHints();
+
+watch(selectedFormat, () => {
+  applyFormatHints();
+  resetStreamState();
+  overlayMessage.value = `Format switched to ${selectedFormatLabel.value}. Point to ${selectedFormatLabel.value} stream.`;
+
+  if (codeReaderInstance) {
+    codeReaderInstance.reset();
+    codeReaderInstance.setHints(decodingHints);
+    if (scanning.value) {
+      scanLoop();
+    }
+  }
+});
+
 async function startScanning() {
   try {
-    error.value = "";
-    decodedData.value = "";
-    currentStream.value = null;
-    progress.value = null;
-    protocol.clearAll();
+    resetStreamState();
 
     // Request camera access
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -42,11 +61,12 @@ async function startScanning() {
       videoRef.value.srcObject = stream;
       await videoRef.value.play();
       scanning.value = true;
-  overlayMessage.value = "Camera ready. Point to Aztec stream.";
+      overlayMessage.value = `Camera ready. Point to ${selectedFormatLabel.value} stream.`;
 
       // Initialize ZXing reader
-  codeReaderInstance = new BrowserMultiFormatReader(decodingHints);
-      
+      codeReaderInstance = new BrowserMultiFormatReader();
+      codeReaderInstance.setHints(decodingHints);
+
       // Start continuous scanning
       scanLoop();
     }
@@ -65,9 +85,9 @@ function scanLoop() {
   codeReaderInstance
     .decodeFromVideoDevice(null, videoRef.value, (result, err) => {
       if (result) {
-        handleAztecCode(result.getText());
+        handleSymbol(result.getText());
       } else if (err && err.name !== "NotFoundException") {
-        // NotFoundException is normal when no Aztec code is in view
+        // NotFoundException is normal when no symbol of the selected format is in view
         // Only log other errors
         console.debug("Scan error:", err);
       }
@@ -79,10 +99,10 @@ function scanLoop() {
     });
 }
 
-function handleAztecCode(codeText) {
+function handleSymbol(codeText) {
   try {
     const result = protocol.processChunk(codeText);
-    
+
     if (result.error) {
       overlayMessage.value = `Error: ${result.error}`;
       return;
@@ -96,11 +116,12 @@ function handleAztecCode(codeText) {
     // Update current stream info
     if (!streamId || streamId !== result.streamId) {
       streamId = result.streamId;
+      const streamProgress = protocol.getProgress(streamId);
       currentStream.value = {
         id: streamId,
-        total: protocol.getProgress(streamId).total
+        total: streamProgress.total
       };
-      overlayMessage.value = `Stream ${streamId} detected (${result.progress.total} chunks).`;
+      overlayMessage.value = `Stream ${streamId} detected via ${selectedFormatLabel.value} (${streamProgress.total} chunks).`;
     }
 
     progress.value = result.progress;
@@ -112,7 +133,7 @@ function handleAztecCode(codeText) {
       reconstructStream(result.streamId);
     }
   } catch (err) {
-    overlayMessage.value = "Error processing Aztec code: " + err.message;
+    overlayMessage.value = `Error processing ${selectedFormatLabel.value}: " + err.message;
   }
 }
 
